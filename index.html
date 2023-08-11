@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
 <title>Return</title>
 <style>
   body {
@@ -167,6 +168,30 @@
       });
       actionsCell.appendChild(deleteButton);
     }
+
+      // Connect to the Socket.io server
+    const socket = io(); // Assumes the server is hosted on the same domain and port
+
+    // Event listener for receiving data from the server
+    socket.on("returnData", function(returnData) {
+      updateTableAfterSubmission(returnData);
+    });
+
+    // Event listener for receiving delete event from the server
+    socket.on("deleteReturn", function(index) {
+      deleteReturn(index);
+    });
+
+    // Function to emit new return data to the server
+    function emitReturnData(returnData) {
+      socket.emit("newReturn", returnData);
+    }
+
+    // Function to emit delete event to the server
+    function emitDeleteReturn(index) {
+      socket.emit("deleteReturn", index);
+    }
+
     
   function loadReturnsFromLocalStorage() {
     returns.forEach((returnData, index) => {
@@ -185,6 +210,8 @@
 
     returnHistory.innerHTML = "";
     loadReturnsFromLocalStorage();
+
+    emitDeleteReturn(index);
   }
 
   function saveReturnsToLocalStorage() {
@@ -227,7 +254,7 @@
           status,
           followUp: ''
         };
-
+        emitReturnData(returnData);
         addReturnToLocalStorage(returnData);
 
       }

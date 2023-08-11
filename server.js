@@ -1,24 +1,31 @@
-const http = require('http')
-const fs = require('fs')
-const port = 3000
+const express = require('express');
+const http = require('http');
+const socketIO = require('socket.io');
 
-const server = http.createServer(function(req, res) {
-  res.writeHead(200, { 'Content-Type': 'text/html' })
-  fs.readFile('index.html', function(error, data) {
-    if (error) {
-      res.writeHead(404)
-      res.write('Error: File Not Found')
-    } else {
-    res.write(data)
-    }
-    res.end()
-  })
-})
+const app = express();
+const server = http.createServer(app);
+const io = socketIO(server);
 
-server.listen(port, function(error) {
-  if (error) {
-    console.log('Something went wrong', error)
-  } else {
-    console.log('Server is listening on port' + port)
-  }
-})
+// Your existing server configuration and routes
+
+// Listen for incoming WebSocket connections
+io.on('connection', (socket) => {
+  console.log('A user connected');
+
+  // Handle updates from clients
+  socket.on('update', (data) => {
+    // Broadcast the update to all connected clients
+    io.emit('update', data);
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('A user disconnected');
+  });
+});
+
+// Start the server
+const port = process.env.PORT || 3000;
+server.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
