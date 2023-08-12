@@ -31,6 +31,7 @@
   }
 </style>
 </head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <body>
 <div id="app">
   <h1>Return</h1>
@@ -72,6 +73,7 @@
   </table>
 </div>
 <script>
+    const socket = io();
     const returnForm = document.getElementById("return-form");
     const returnHistory = document.getElementById("return-history");
     let returns = JSON.parse(localStorage.getItem("returns")) || [];
@@ -118,9 +120,35 @@
       statusSelect.value = returnData.status;
       statusCell.appendChild(statusSelect);
 
+      const saveButton = document.createElement("button");
+      saveButton.textContent = "Save";
+      const editButton = document.createElement("button");
+      editButton.textContent = "Edit";
+
+      // Handle the "Save" button click
+      saveButton.addEventListener("click", function() {
+          followUpInput.disabled = true;
+          const updatedFollowUp = followUpInput.value;
+          returnData.followUp = updatedFollowUp;
+          saveReturnsToLocalStorage();
+
+          socket.emit("updateFollowUp", {
+              index,
+              updatedFollowUp
+          });
+          // Add any further synchronization logic here
+      });
+
+      editButton.addEventListener("click", function() {
+        followUpInput.disabled = false;
+    });
+
       const followUpInput = document.createElement("input");
       followUpInput.type = "text";
+      followUpInput.value = returnData.followUp || "";
       followUpCell.appendChild(followUpInput);
+      followUpCell.appendChild(saveButton);
+      followUpCell.appendChild(editButton);
 
       if (returnData.status === "Completed") {
         followUpInput.value = "Case Closed";
@@ -205,20 +233,6 @@
       const date = dateInput.value;
       
       if (doNo) {
-        const row = returnHistory.insertRow();
-        const doNoCell = row.insertCell();
-        const transporterCell = row.insertCell();
-        const reasonCell = row.insertCell();
-        const dateCell = row.insertCell();
-        const statusCell = row.insertCell();
-        const actionsCell = row.insertCell();
-
-        doNoCell.textContent = doNo;
-        transporterCell.textContent = transporter;
-        reasonCell.textContent = reason;
-        dateCell.textContent = formatDate(date);
-        statusCell.textContent = status;
-
         const returnData = {
           doNo,
           transporter,
@@ -227,15 +241,175 @@
           status,
           followUp: ''
         };
+        socket.emit("returnData", returnData);
+        console.log("Emitted returnData:", returnData);
 
+        saveReturnsToLocalStorage(returns);
         addReturnToLocalStorage(returnData);
+        updateTableAfterSubmission(returnData);
 
+        doNoInput.value = "";
+        transporterInput.value = "";
+        reasonInput.value = "";
+        dateInput.value = "";
       }
       location.reload();
     });
 
     // Load existing data from Local Storage on page load
     loadReturnsFromLocalStorage();
+    socket.on("returnData", function(data) {
+      returns.push(data); // Assuming data is the new input
+      saveReturnsToLocalStorage(returns);
+
+      const newRow = returnHistory.insertRow();
+      const doNoCell = newRow.insertCell();
+      const transporterCell = newRow.insertCell();
+      const reasonCell = newRow.insertCell();
+      const dateCell = newRow.insertCell();
+      const statusCell = newRow.insertCell();
+      const followUpCell = newRow.insertCell();
+      const actionsCell = newRow.insertCell();
+
+      // Populate the cells with the data from the event
+      doNoCell.textContent = data.doNo;
+      transporterCell.textContent = data.transporter;
+      reasonCell.textContent = data.reason;
+      dateCell.textContent = formatDate(data.date);
+      
+      // Status cell can be left empty initially or populated based on your logic
+      statusCell.textContent = "";
+
+      // Follow-up cell can be left empty initially
+      followUpCell.textContent = "";
+
+      // Create a select element for the status cell
+      const statusSelect = document.createElement("select");
+      const statusOptions = ["", "Follow-up", "Completed"];
+      statusOptions.forEach(option => {
+        const statusOption = document.createElement("option");
+        statusOption.value = option;
+        statusOption.text = option || "-";
+        statusSelect.appendChild(statusOption);
+      });
+      statusSelect.value = data.status;
+      statusCell.appendChild(statusSelect);
+
+      // Input for follow-up cell
+      const followUpInput = document.createElement("input");
+      followUpInput.type = "text";
+      followUpInput.value = data.followUp || "";
+      followUpCell.appendChild(followUpInput);
+      followUpCell.appendChild(saveButton);
+      followUpCell.appendChild(editButton);
+
+      followUpInput.addEventListener("input", function () {
+          returnData.followUp = followUpInput.value; // Update the followUp value
+          saveReturnsToLocalStorage();
+          socket.emit("updateFollowUp", {
+              index, 
+              followUpValue: followUpInput.value
+          });
+      });
+
+      // Handle status change
+      statusSelect.addEventListener("change", function() {
+        const newStatus = statusSelect.value;
+        const followUpValue = newStatus === "Completed" ? "Case Closed" : followUpInput.value;
+
+        socket.emit("updateStatus", {
+          index,          // The index of the row you want to update
+          newStatus,
+          followUpValue
+        });
+
+        saveReturnsToLocalStorage(returns);
+
+        doNoInput.value = "";
+        transporterInput.value = "";
+        reasonInput.value = "";
+        dateInput.value = "";
+
+        // Load updated data and refresh the table
+        loadReturnsFromLocalStorage();
+  
+        if (statusSelect.value === "Completed") {
+          followUpInput.value = "Case Closed";
+          followUpInput.disabled = true;
+        } else if (statusSelect.value === "Follow-up") {
+          followUpInput.disabled = false;
+        } else {
+          followUpInput.value = "";
+          followUpInput.disabled = true;
+        }
+      });
+
+      socket.on("deleteRow", (index) => {
+        // Delete the row with the corresponding index from the table
+        const rows = document.querySelectorAll("#return-table tbody tr");
+        if (rows[index]) {
+            rows[index].remove();
+        }
+      });
+      
+      function loadReturnsFromLocalStorage() {
+        returnHistory.innerHTML = ""; // Clear the existing content
+        returns = JSON.parse(localStorage.getItem("returns")) || [];
+
+        returns.forEach((returnData, index) => {
+          addRowToTable(returnData, index);
+        });
+      }
+
+      function updateTableAfterSubmission(returnData) {
+        const index = returnHistory.rows.length;
+        addRowToTable(returnData, index);
+      }
+
+      function deleteReturn(index) {
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "Delete";
+        deleteButton.addEventListener("click", () => {
+          deleteReturn(index);
+        });
+        actionsCell.appendChild(deleteButton);
+        socket.emit("deleteRow", index);
+
+        // Update the UI on your device
+        loadReturnsFromLocalStorage();
+      }
+
+      socket.on("updatedFollowUp", function(data) {
+        const { index, updatedFollowUp } = data;
+        const rows = document.querySelectorAll("#return-table tbody tr");
+        const followUpCell = rows[index].querySelectorAll("td")[5];
+        const followUpInput = followUpCell.querySelector("input");
+
+        // Update the follow-up input value
+        followUpInput.value = updatedFollowUp;
+    });
+
+      socket.on("updatedStatus", function(data) {
+        const { index, newStatus, followUpValue } = data;
+        const row = returnHistory.rows[index];
+
+        // Update the status and follow-up UI for the specified row
+        if (row) {
+          const statusSelect = row.cells[4].querySelector("select");
+          const followUpInput = row.cells[5].querySelector("input");
+
+          statusSelect.value = newStatus;
+          followUpInput.value = followUpValue;
+
+          // Disable or enable follow-up input based on status
+          followUpInput.disabled = (newStatus === "Completed");
+
+          // Handle further UI updates as needed
+        }
+      });
+
+      // ... (similarly handle other UI updates)
+    });
 </script>
 <head>
     <!-- ... (other meta tags and title) ... -->
@@ -345,6 +519,25 @@
         width: 150px; 
         padding: 10px;
         font-size: 16px;
+      }
+
+      #return-table td button {
+        padding: 5px 10px;
+        margin: 2px;
+        cursor: pointer;
+        border: none;
+        border-radius: 3px;
+        font-size: 12px;
+      }
+
+      #return-table td button.save-button {
+          background-color: #5cb85c;
+          color: white;
+      }
+
+      #return-table td button.edit-button {
+          background-color: #f0ad4e;
+          color: white;
       }
     </style>
   </head>  
