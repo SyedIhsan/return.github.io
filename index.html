@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
 <title>Return</title>
 <style>
   body {
@@ -32,6 +31,10 @@
   }
 </style>
 </head>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  var socket = io();
+</script>
 <body>
 <div id="app">
   <h1>Return</h1>
@@ -170,7 +173,7 @@
     }
 
       // Connect to the Socket.io server
-    const socket = io(); // Assumes the server is hosted on the same domain and port
+    //const socket = io(); // Assumes the server is hosted on the same domain and port
 
     // Event listener for receiving data from the server
     socket.on("returnData", function(returnData) {

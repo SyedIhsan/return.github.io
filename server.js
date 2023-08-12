@@ -8,6 +8,9 @@ const io = socketIO(server);
 
 // Your existing server configuration and routes
 // Add any middleware, routes, and static file serving as needed
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
 
 // Listen for incoming WebSocket connections
 io.on('connection', (socket) => {
