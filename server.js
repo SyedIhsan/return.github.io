@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -8,8 +9,10 @@ const io = socketIO(server);
 
 // Your existing server configuration and routes
 // Add any middleware, routes, and static file serving as needed
+app.use(express.static(path.join(__dirname, 'return.github.io')));
+
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
+  res.sendFile(__dirname + '/return.github.io/index.html');
 });
 
 // Listen for incoming WebSocket connections
