@@ -73,7 +73,7 @@
   </table>
 </div>
 <script>
-    const socket = io();
+    const socket = io.connect();
     const returnForm = document.getElementById("return-form");
     const returnHistory = document.getElementById("return-history");
     let returns = JSON.parse(localStorage.getItem("returns")) || [];
