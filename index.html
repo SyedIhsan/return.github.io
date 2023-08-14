@@ -120,35 +120,9 @@
       statusSelect.value = returnData.status;
       statusCell.appendChild(statusSelect);
 
-      const saveButton = document.createElement("button");
-      saveButton.textContent = "Save";
-      const editButton = document.createElement("button");
-      editButton.textContent = "Edit";
-
-      // Handle the "Save" button click
-      saveButton.addEventListener("click", function() {
-          followUpInput.disabled = true;
-          const updatedFollowUp = followUpInput.value;
-          returnData.followUp = updatedFollowUp;
-          saveReturnsToLocalStorage();
-
-          socket.emit("updateFollowUp", {
-              index,
-              updatedFollowUp
-          });
-          // Add any further synchronization logic here
-      });
-
-      editButton.addEventListener("click", function() {
-        followUpInput.disabled = false;
-    });
-
       const followUpInput = document.createElement("input");
       followUpInput.type = "text";
-      followUpInput.value = returnData.followUp || "";
       followUpCell.appendChild(followUpInput);
-      followUpCell.appendChild(saveButton);
-      followUpCell.appendChild(editButton);
 
       if (returnData.status === "Completed") {
         followUpInput.value = "Case Closed";
@@ -300,17 +274,6 @@
       followUpInput.type = "text";
       followUpInput.value = data.followUp || "";
       followUpCell.appendChild(followUpInput);
-      followUpCell.appendChild(saveButton);
-      followUpCell.appendChild(editButton);
-
-      followUpInput.addEventListener("input", function () {
-          returnData.followUp = followUpInput.value; // Update the followUp value
-          saveReturnsToLocalStorage();
-          socket.emit("updateFollowUp", {
-              index, 
-              followUpValue: followUpInput.value
-          });
-      });
 
       // Handle status change
       statusSelect.addEventListener("change", function() {
@@ -346,11 +309,18 @@
 
       socket.on("deleteRow", (index) => {
         // Delete the row with the corresponding index from the table
-        const rows = document.querySelectorAll("#return-table tbody tr");
+        const rows = returnHistory.getElementsByTagName("tr");
         if (rows[index]) {
-            rows[index].remove();
+          rows[index].remove();
         }
       });
+
+      const deleteButton = document.createElement("button");
+      deleteButton.textContent = "Delete";
+      deleteButton.addEventListener("click", () => {
+        deleteReturn(index);
+      });
+      actionsCell.appendChild(deleteButton);
       
       function loadReturnsFromLocalStorage() {
         returnHistory.innerHTML = ""; // Clear the existing content
@@ -367,27 +337,15 @@
       }
 
       function deleteReturn(index) {
-        const deleteButton = document.createElement("button");
-        deleteButton.textContent = "Delete";
-        deleteButton.addEventListener("click", () => {
-          deleteReturn(index);
-        });
-        actionsCell.appendChild(deleteButton);
+        returns.splice(index, 1);
+        saveReturnsToLocalStorage();
+        
+        // Emit a socket event to notify other devices to delete the same row
         socket.emit("deleteRow", index);
 
         // Update the UI on your device
         loadReturnsFromLocalStorage();
       }
-
-      socket.on("updatedFollowUp", function(data) {
-        const { index, updatedFollowUp } = data;
-        const rows = document.querySelectorAll("#return-table tbody tr");
-        const followUpCell = rows[index].querySelectorAll("td")[5];
-        const followUpInput = followUpCell.querySelector("input");
-
-        // Update the follow-up input value
-        followUpInput.value = updatedFollowUp;
-    });
 
       socket.on("updatedStatus", function(data) {
         const { index, newStatus, followUpValue } = data;
@@ -519,25 +477,6 @@
         width: 150px; 
         padding: 10px;
         font-size: 16px;
-      }
-
-      #return-table td button {
-        padding: 5px 10px;
-        margin: 2px;
-        cursor: pointer;
-        border: none;
-        border-radius: 3px;
-        font-size: 12px;
-      }
-
-      #return-table td button.save-button {
-          background-color: #5cb85c;
-          color: white;
-      }
-
-      #return-table td button.edit-button {
-          background-color: #f0ad4e;
-          color: white;
       }
     </style>
   </head>  
