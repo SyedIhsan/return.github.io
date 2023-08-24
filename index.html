@@ -34,11 +34,11 @@
 <body>
 <div id="app">
   <h1>Return</h1>
-  <form action="index.php" method="post">
+  <form id="return-form">
     <label for="do-no">DO No.:</label>
-    <input type="text" id="do-no" required name="do-no">
+    <input type="text" id="do-no" required>
     <label for="transporter">Transporter:</label>
-    <select id="transporter" required name="transporter">
+    <select id="transporter" required>
       <option value="Local 01">Local 01</option>
       <option value="Local 02">Local 02</option>
       <option value="Local 03">Local 03</option>
@@ -50,9 +50,9 @@
       <option value="Other">Other</option>
     </select>
     <label for="reason">Reason:</label>
-    <input type="text" id="reason" required name="reason">
+    <input type="text" id="reason" required>
     <label for="date">Date:</label>
-    <input type="date" id="date" class="date-input" required name="date">
+    <input type="date" id="date" class="date-input" required>
     <button type="submit">Update</button>
   </form>
   <h2>Return History</h2>
@@ -72,7 +72,6 @@
   </table>
 </div>
 <script>
-    const socket = io.connect();
     const returnForm = document.getElementById("return-form");
     const returnHistory = document.getElementById("return-history");
     let returns = JSON.parse(localStorage.getItem("returns")) || [];
@@ -206,6 +205,20 @@
       const date = dateInput.value;
       
       if (doNo) {
+        const row = returnHistory.insertRow();
+        const doNoCell = row.insertCell();
+        const transporterCell = row.insertCell();
+        const reasonCell = row.insertCell();
+        const dateCell = row.insertCell();
+        const statusCell = row.insertCell();
+        const actionsCell = row.insertCell();
+
+        doNoCell.textContent = doNo;
+        transporterCell.textContent = transporter;
+        reasonCell.textContent = reason;
+        dateCell.textContent = formatDate(date);
+        statusCell.textContent = status;
+
         const returnData = {
           doNo,
           transporter,
@@ -214,159 +227,15 @@
           status,
           followUp: ''
         };
-        socket.emit("returnData", returnData);
-        console.log("Emitted returnData:", returnData);
 
-        saveReturnsToLocalStorage(returns);
         addReturnToLocalStorage(returnData);
-        updateTableAfterSubmission(returnData);
 
-        doNoInput.value = "";
-        transporterInput.value = "";
-        reasonInput.value = "";
-        dateInput.value = "";
       }
       location.reload();
     });
 
     // Load existing data from Local Storage on page load
     loadReturnsFromLocalStorage();
-    socket.on("returnData", function(data) {
-      returns.push(data); // Assuming data is the new input
-      saveReturnsToLocalStorage(returns);
-
-      const newRow = returnHistory.insertRow();
-      const doNoCell = newRow.insertCell();
-      const transporterCell = newRow.insertCell();
-      const reasonCell = newRow.insertCell();
-      const dateCell = newRow.insertCell();
-      const statusCell = newRow.insertCell();
-      const followUpCell = newRow.insertCell();
-      const actionsCell = newRow.insertCell();
-
-      // Populate the cells with the data from the event
-      doNoCell.textContent = data.doNo;
-      transporterCell.textContent = data.transporter;
-      reasonCell.textContent = data.reason;
-      dateCell.textContent = formatDate(data.date);
-      
-      // Status cell can be left empty initially or populated based on your logic
-      statusCell.textContent = "";
-
-      // Follow-up cell can be left empty initially
-      followUpCell.textContent = "";
-
-      // Create a select element for the status cell
-      const statusSelect = document.createElement("select");
-      const statusOptions = ["", "Follow-up", "Completed"];
-      statusOptions.forEach(option => {
-        const statusOption = document.createElement("option");
-        statusOption.value = option;
-        statusOption.text = option || "-";
-        statusSelect.appendChild(statusOption);
-      });
-      statusSelect.value = data.status;
-      statusCell.appendChild(statusSelect);
-
-      // Input for follow-up cell
-      const followUpInput = document.createElement("input");
-      followUpInput.type = "text";
-      followUpInput.value = data.followUp || "";
-      followUpCell.appendChild(followUpInput);
-
-      // Handle status change
-      statusSelect.addEventListener("change", function() {
-        const newStatus = statusSelect.value;
-        const followUpValue = newStatus === "Completed" ? "Case Closed" : followUpInput.value;
-
-        socket.emit("updateStatus", {
-          index,          // The index of the row you want to update
-          newStatus,
-          followUpValue
-        });
-
-        saveReturnsToLocalStorage(returns);
-
-        doNoInput.value = "";
-        transporterInput.value = "";
-        reasonInput.value = "";
-        dateInput.value = "";
-
-        // Load updated data and refresh the table
-        loadReturnsFromLocalStorage();
-  
-        if (statusSelect.value === "Completed") {
-          followUpInput.value = "Case Closed";
-          followUpInput.disabled = true;
-        } else if (statusSelect.value === "Follow-up") {
-          followUpInput.disabled = false;
-        } else {
-          followUpInput.value = "";
-          followUpInput.disabled = true;
-        }
-      });
-
-      socket.on("deleteRow", (index) => {
-        // Delete the row with the corresponding index from the table
-        const rows = returnHistory.getElementsByTagName("tr");
-        if (rows[index]) {
-          rows[index].remove();
-        }
-      });
-
-      const deleteButton = document.createElement("button");
-      deleteButton.textContent = "Delete";
-      deleteButton.addEventListener("click", () => {
-        deleteReturn(index);
-      });
-      actionsCell.appendChild(deleteButton);
-      
-      function loadReturnsFromLocalStorage() {
-        returnHistory.innerHTML = ""; // Clear the existing content
-        returns = JSON.parse(localStorage.getItem("returns")) || [];
-
-        returns.forEach((returnData, index) => {
-          addRowToTable(returnData, index);
-        });
-      }
-
-      function updateTableAfterSubmission(returnData) {
-        const index = returnHistory.rows.length;
-        addRowToTable(returnData, index);
-      }
-
-      function deleteReturn(index) {
-        returns.splice(index, 1);
-        saveReturnsToLocalStorage();
-        
-        // Emit a socket event to notify other devices to delete the same row
-        socket.emit("deleteRow", index);
-
-        // Update the UI on your device
-        loadReturnsFromLocalStorage();
-      }
-
-      socket.on("updatedStatus", function(data) {
-        const { index, newStatus, followUpValue } = data;
-        const row = returnHistory.rows[index];
-
-        // Update the status and follow-up UI for the specified row
-        if (row) {
-          const statusSelect = row.cells[4].querySelector("select");
-          const followUpInput = row.cells[5].querySelector("input");
-
-          statusSelect.value = newStatus;
-          followUpInput.value = followUpValue;
-
-          // Disable or enable follow-up input based on status
-          followUpInput.disabled = (newStatus === "Completed");
-
-          // Handle further UI updates as needed
-        }
-      });
-
-      // ... (similarly handle other UI updates)
-    });
 </script>
 <head>
     <!-- ... (other meta tags and title) ... -->
