@@ -31,15 +31,14 @@
   }
 </style>
 </head>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <body>
 <div id="app">
   <h1>Return</h1>
-  <form id="return-form">
+  <form action="index.php" method="post">
     <label for="do-no">DO No.:</label>
-    <input type="text" id="do-no" required>
+    <input type="text" id="do-no" required name="do-no">
     <label for="transporter">Transporter:</label>
-    <select id="transporter" required>
+    <select id="transporter" required name="transporter">
       <option value="Local 01">Local 01</option>
       <option value="Local 02">Local 02</option>
       <option value="Local 03">Local 03</option>
@@ -51,9 +50,9 @@
       <option value="Other">Other</option>
     </select>
     <label for="reason">Reason:</label>
-    <input type="text" id="reason" required>
+    <input type="text" id="reason" required name="reason">
     <label for="date">Date:</label>
-    <input type="date" id="date" class="date-input" required>
+    <input type="date" id="date" class="date-input" required name="date">
     <button type="submit">Update</button>
   </form>
   <h2>Return History</h2>

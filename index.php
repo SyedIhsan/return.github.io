@@ -38,8 +38,6 @@ if ($result->num_rows > 0) {
         echo "Transporter: " . $row["transporter"] . "<br>";
         echo "Reason: " . $row["reason"] . "<br>";
         echo "Date: " . $row["date"] . "<br>";
-        echo "Status: " . $row["Follow-up"] . "<br>";
-        echo "FollowUp: " . $row[""] . "<br>";
         // ... (similarly for other columns)
         echo "<br>";
     }
@@ -48,7 +46,7 @@ if ($result->num_rows > 0) {
 }
 
 $newStatus = "Completed";
-$newFollowUp = "Issue resolved and case closed";
+$newFollowUp = "Case Closed";
 
 $updateQuery = "UPDATE returns
                 SET status = '$newStatus', follow_up = '$newFollowUp'
@@ -58,14 +56,6 @@ if ($conn->query($updateQuery) === TRUE) {
     echo "Data updated successfully";
 } else {
     echo "Error updating data: " . $conn->error;
-}
-
-$deleteQuery = "DELETE FROM returns WHERE do_no = '$doNo'";
-
-if ($conn->query($deleteQuery) === TRUE) {
-    echo "Data deleted successfully";
-} else {
-    echo "Error deleting data: " . $conn->error;
 }
 
 $conn->close();
